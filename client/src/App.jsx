@@ -1,11 +1,14 @@
 import Wallet from "./Wallet";
 import Transfer from "./Transfer";
 import "./App.scss";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ethers } from "ethers";
+import { toHex } from "ethereum-cryptography/utils";
 
 function App() {
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(0.0);
   const [address, setAddress] = useState("");
+  const [connected, setConnected] = useState(false);
 
   return (
     <div className="app">

@@ -1,26 +1,61 @@
 import { useState } from "react";
 import server from "./server";
+import { secp256k1 } from "ethereum-cryptography/secp256k1";
+import { toHex, utf8ToBytes } from "ethereum-cryptography/utils";
+import { sha256 } from "ethereum-cryptography/sha256.js";
+import SHA256 from "crypto-js/sha256";
+import { keccak256 } from "ethereum-cryptography/keccak.js";
 
 function Transfer({ address, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
   const [recipient, setRecipient] = useState("");
+  function bigIntReplacer(key, value) {
+    if (typeof value === "bigint") {
+      return value.toString() + 'n';
+    }
+    return value;
+  }
 
   const setValue = (setter) => (evt) => setter(evt.target.value);
 
+  function signMessage(message, privateKey) {
+    const signature = secp256k1.sign(message, privateKey);
+    console.log("Signature: ", signature);
+    return signature;
+  }
+
+  function hashMessage(message) {
+    return (SHA256(message)).toString();
+    // return keccak256(utf8ToBytes(message)).toString();
+  }
+
   async function transfer(evt) {
     evt.preventDefault();
+
+    let sender = secp256k1.getPublicKey(address);
+    sender = toHex(sender);
+    const messageToSign = hashMessage(
+      `${sender}${sendAmount}${recipient}`
+    );
+
+    console.log("Message: ", messageToSign);
+    const signature = signMessage(messageToSign, address);
 
     try {
       const {
         data: { balance },
       } = await server.post(`send`, {
-        sender: address,
+        // sender: address,
         amount: parseInt(sendAmount),
         recipient,
+        message: messageToSign,
+        privateKey: address,
+        signature: JSON.stringify(signature, bigIntReplacer)
       });
       setBalance(balance);
     } catch (ex) {
-      alert(ex.response.data.message);
+      console.log(ex);
+      alert(ex.response);
     }
   }
 
